@@ -72,12 +72,12 @@ def show_dashboard():
             st.session_state.learning_language = new_language
             st.session_state.user_info['learning_language'] = new_language
             st.success("학습 언어가 업데이트되었습니다!")
-            st.rerun()
 
         if db.update_user_level(st.session_state.user_info['id'], new_level):
             st.session_state.user_info['level'] = new_level
             st.success("수준이 업데이트되었습니다!")
-            st.rerun()
+        
+        st.rerun()
 
     if st.button("학습 시작하기"):
         st.session_state.learning_started = True
