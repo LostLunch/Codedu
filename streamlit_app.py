@@ -16,6 +16,9 @@ if 'learning_language' not in st.session_state:
 
 # --- 화면 함수 정의 ---
 def show_dashboard():
+    if st.session_state.learning_started == True:
+        show_learning()
+    
     st.success(f"환영합니다, {st.session_state.user_info['username']}님!")
     st.markdown(f"**학습 수준:** {st.session_state.user_info['level']}")
     
@@ -125,22 +128,7 @@ def show_register():
 
 def show_learning():
     st.header("학습 시작하기")
-    languages = ["Python", "Java", "C++", "JavaScript", "C#", "Ruby", "Go"]
-    current_lang = st.session_state.user_info.get('learning_language', 'Python') if st.session_state.logged_in else 'Python'
-    current_lang_index = languages.index(current_lang) if current_lang in languages else 0
     
-    selected_language = st.selectbox("학습 언어", languages, index=current_lang_index)
-    
-    if st.session_state.logged_in:
-        if selected_language != current_lang:
-            if db.update_user_language(st.session_state.user_info['id'], selected_language):
-                st.session_state.learning_language = selected_language
-                st.session_state.user_info['learning_language'] = selected_language
-                st.success("학습 언어가 설정되었습니다!")
-    
-    if st.button("학습 시작"):
-        st.session_state.learning_started = True
-        st.rerun()
 
 # --- 메인 라우팅 ---
 if st.session_state.logged_in:
