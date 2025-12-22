@@ -60,13 +60,6 @@ def show_dashboard():
             st.success(f"학습 언어가 {new_language}로 변경되었습니다!")
             st.rerun()
     
-    if st.button("언어 업데이트"):
-        if db.update_user_language(st.session_state.user_info['id'], new_language):
-            st.session_state.learning_language = new_language
-            st.session_state.user_info['learning_language'] = new_language
-            st.success("학습 언어가 업데이트되었습니다!")
-            st.rerun()
-
     # 수준 변경
     st.subheader("학습 수준 변경")
     new_level = st.selectbox(
@@ -74,7 +67,13 @@ def show_dashboard():
         ["초급", "중급", "고급"],
         index=["초급", "중급", "고급"].index(st.session_state.user_info['level']),
     )
-    if st.button("수준 업데이트"):
+    if st.button("업데이트"):
+        if db.update_user_language(st.session_state.user_info['id'], new_language):
+            st.session_state.learning_language = new_language
+            st.session_state.user_info['learning_language'] = new_language
+            st.success("학습 언어가 업데이트되었습니다!")
+            st.rerun()
+
         if db.update_user_level(st.session_state.user_info['id'], new_level):
             st.session_state.user_info['level'] = new_level
             st.success("수준이 업데이트되었습니다!")
