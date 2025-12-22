@@ -51,14 +51,7 @@ def show_dashboard():
     languages = ["Python", "Java", "C++", "JavaScript", "C#", "Ruby", "Go"]
     current_lang_index = languages.index(st.session_state.learning_language) if st.session_state.learning_language in languages else 0
     new_language = st.selectbox("학습 언어", languages, index=current_lang_index, key="language_select")
-    
-    # 언어 변경 시 통계와 진행 상태가 해당 언어로 업데이트됨
-    if new_language != st.session_state.learning_language:
-        st.session_state.learning_language = new_language
-        if db.update_user_language(st.session_state.user_info['id'], new_language):
-            st.session_state.user_info['learning_language'] = new_language
-            st.success(f"학습 언어가 {new_language}로 변경되었습니다!")
-            st.rerun()
+
     
     # 수준 변경
     st.subheader("학습 수준 변경")
