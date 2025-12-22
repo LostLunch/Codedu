@@ -23,16 +23,26 @@ def init_database():
             username TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
             level TEXT DEFAULT '초급',
+            learning_language TEXT DEFAULT 'Python',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP
         )
     """)
+    
+    # 기존 테이블에 learning_language 컬럼 추가 (이미 존재하면 무시)
+    try:
+        cursor.execute("ALTER TABLE users ADD COLUMN learning_language TEXT DEFAULT 'Python'")
+        conn.commit()
+    except sqlite3.OperationalError:
+        # 컬럼이 이미 존재하는 경우 무시
+        pass
     
     # 학습 상태 테이블 생성
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS learning_progress (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
+            language TEXT DEFAULT 'Python',
             chapter TEXT,
             completed BOOLEAN DEFAULT 0,
             score INTEGER DEFAULT 0,
@@ -40,6 +50,14 @@ def init_database():
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
+    
+    # 기존 테이블에 language 컬럼 추가 (이미 존재하면 무시)
+    try:
+        cursor.execute("ALTER TABLE learning_progress ADD COLUMN language TEXT DEFAULT 'Python'")
+        conn.commit()
+    except sqlite3.OperationalError:
+        # 컬럼이 이미 존재하는 경우 무시
+        pass
     
     conn.commit()
     conn.close()
@@ -88,7 +106,7 @@ def verify_user(username: str, password: str) -> tuple[bool, Optional[Dict[str, 
     try:
         password_hash = hash_password(password)
         cursor.execute("""
-            SELECT id, username, level, created_at
+            SELECT id, username, level, learning_language, created_at
             FROM users
             WHERE username = ? AND password_hash = ?
         """, (username, password_hash))
@@ -107,6 +125,7 @@ def verify_user(username: str, password: str) -> tuple[bool, Optional[Dict[str, 
                 'id': user['id'],
                 'username': user['username'],
                 'level': user['level'],
+                'learning_language': user['learning_language'] or 'Python',
                 'created_at': user['created_at']
             }
         else:
@@ -134,17 +153,50 @@ def update_user_level(user_id: int, level: str) -> bool:
     finally:
         conn.close()
 
-def save_learning_progress(user_id: int, chapter: str, completed: bool = False, score: int = 0) -> bool:
-    """학습 진행 상태를 저장합니다."""
+def update_user_language(user_id: int, language: str) -> bool:
+    """사용자의 학습 언어를 업데이트합니다."""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # 기존 진행 상태 확인
+        cursor.execute("""
+            UPDATE users SET learning_language = ?
+            WHERE id = ?
+        """, (language, user_id))
+        conn.commit()
+        return True
+    except sqlite3.Error:
+        return False
+    finally:
+        conn.close()
+
+def get_user_language(user_id: int) -> Optional[str]:
+    """사용자의 학습 언어를 조회합니다."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            SELECT learning_language FROM users WHERE id = ?
+        """, (user_id,))
+        result = cursor.fetchone()
+        return result['learning_language'] if result and result['learning_language'] else 'Python'
+    except sqlite3.Error:
+        return 'Python'
+    finally:
+        conn.close()
+
+def save_learning_progress(user_id: int, chapter: str, language: str, completed: bool = False, score: int = 0) -> bool:
+    """학습 진행 상태를 저장합니다. (언어별로 관리)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # 기존 진행 상태 확인 (언어와 챕터로 확인)
         cursor.execute("""
             SELECT id FROM learning_progress
-            WHERE user_id = ? AND chapter = ?
-        """, (user_id, chapter))
+            WHERE user_id = ? AND chapter = ? AND language = ?
+        """, (user_id, chapter, language))
         
         existing = cursor.fetchone()
         
@@ -158,9 +210,9 @@ def save_learning_progress(user_id: int, chapter: str, completed: bool = False, 
         else:
             # 새로 추가
             cursor.execute("""
-                INSERT INTO learning_progress (user_id, chapter, completed, score)
-                VALUES (?, ?, ?, ?)
-            """, (user_id, chapter, completed, score))
+                INSERT INTO learning_progress (user_id, language, chapter, completed, score)
+                VALUES (?, ?, ?, ?, ?)
+            """, (user_id, language, chapter, completed, score))
         
         conn.commit()
         return True
@@ -169,18 +221,26 @@ def save_learning_progress(user_id: int, chapter: str, completed: bool = False, 
     finally:
         conn.close()
 
-def get_learning_progress(user_id: int) -> list[Dict[str, Any]]:
-    """사용자의 학습 진행 상태를 조회합니다."""
+def get_learning_progress(user_id: int, language: Optional[str] = None) -> list[Dict[str, Any]]:
+    """사용자의 학습 진행 상태를 조회합니다. (언어별 필터링 가능)"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        cursor.execute("""
-            SELECT chapter, completed, score, last_accessed
-            FROM learning_progress
-            WHERE user_id = ?
-            ORDER BY last_accessed DESC
-        """, (user_id,))
+        if language:
+            cursor.execute("""
+                SELECT language, chapter, completed, score, last_accessed
+                FROM learning_progress
+                WHERE user_id = ? AND language = ?
+                ORDER BY last_accessed DESC
+            """, (user_id, language))
+        else:
+            cursor.execute("""
+                SELECT language, chapter, completed, score, last_accessed
+                FROM learning_progress
+                WHERE user_id = ?
+                ORDER BY language, last_accessed DESC
+            """, (user_id,))
         
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
@@ -189,35 +249,56 @@ def get_learning_progress(user_id: int) -> list[Dict[str, Any]]:
     finally:
         conn.close()
 
-def get_user_stats(user_id: int) -> Dict[str, Any]:
-    """사용자의 통계 정보를 반환합니다."""
+def get_user_stats(user_id: int, language: Optional[str] = None) -> Dict[str, Any]:
+    """사용자의 통계 정보를 반환합니다. (언어별 필터링 가능)"""
     conn = get_db_connection()
     cursor = conn.cursor()
     
     try:
-        # 완료한 챕터 수
-        cursor.execute("""
-            SELECT COUNT(*) as completed_count
-            FROM learning_progress
-            WHERE user_id = ? AND completed = 1
-        """, (user_id,))
-        completed = cursor.fetchone()['completed_count']
-        
-        # 전체 챕터 수
-        cursor.execute("""
-            SELECT COUNT(*) as total_count
-            FROM learning_progress
-            WHERE user_id = ?
-        """, (user_id,))
-        total = cursor.fetchone()['total_count']
-        
-        # 평균 점수
-        cursor.execute("""
-            SELECT AVG(score) as avg_score
-            FROM learning_progress
-            WHERE user_id = ?
-        """, (user_id,))
-        avg_score = cursor.fetchone()['avg_score'] or 0
+        if language:
+            # 특정 언어의 통계
+            cursor.execute("""
+                SELECT COUNT(*) as completed_count
+                FROM learning_progress
+                WHERE user_id = ? AND language = ? AND completed = 1
+            """, (user_id, language))
+            completed = cursor.fetchone()['completed_count']
+            
+            cursor.execute("""
+                SELECT COUNT(*) as total_count
+                FROM learning_progress
+                WHERE user_id = ? AND language = ?
+            """, (user_id, language))
+            total = cursor.fetchone()['total_count']
+            
+            cursor.execute("""
+                SELECT AVG(score) as avg_score
+                FROM learning_progress
+                WHERE user_id = ? AND language = ?
+            """, (user_id, language))
+            avg_score = cursor.fetchone()['avg_score'] or 0
+        else:
+            # 전체 통계
+            cursor.execute("""
+                SELECT COUNT(*) as completed_count
+                FROM learning_progress
+                WHERE user_id = ? AND completed = 1
+            """, (user_id,))
+            completed = cursor.fetchone()['completed_count']
+            
+            cursor.execute("""
+                SELECT COUNT(*) as total_count
+                FROM learning_progress
+                WHERE user_id = ?
+            """, (user_id,))
+            total = cursor.fetchone()['total_count']
+            
+            cursor.execute("""
+                SELECT AVG(score) as avg_score
+                FROM learning_progress
+                WHERE user_id = ?
+            """, (user_id,))
+            avg_score = cursor.fetchone()['avg_score'] or 0
         
         return {
             'completed_chapters': completed,
