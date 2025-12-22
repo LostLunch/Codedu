@@ -128,6 +128,11 @@ def show_register():
 
 def show_learning():
     st.header("학습 시작하기")
+    st.write("테스트")
+    st.write("테스트")
+    st.write("테스트")
+    st.write("테스트")
+    
     
 
 # --- 메인 라우팅 ---
