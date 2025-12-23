@@ -8,6 +8,8 @@ if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_info' not in st.session_state:
     st.session_state.user_info = None
+if 'home_page' not in st.session_state:
+    st.session_state.home_page = True
 if 'learning_started' not in st.session_state:
     st.session_state.learning_started = False
 if 'learning_language' not in st.session_state:
@@ -16,9 +18,6 @@ if 'learning_language' not in st.session_state:
 
 # --- 화면 함수 정의 ---
 def show_dashboard():
-    if st.session_state.learning_started == True:
-        show_learning()
-    
     st.success(f"환영합니다, {st.session_state.user_info['username']}님!")
     st.markdown(f"**학습 수준:** {st.session_state.user_info['level']}")
     
@@ -77,6 +76,7 @@ def show_dashboard():
 
     if st.button("학습 시작하기"):
         st.session_state.learning_started = True
+        st.session_state.home_page = False
         st.rerun()
 
     if st.button("로그아웃"):
@@ -132,12 +132,16 @@ def show_learning():
     st.write("테스트")
     st.write("테스트")
     st.write("테스트")
-    
+
     
 
 # --- 메인 라우팅 ---
 if st.session_state.logged_in:
-    show_dashboard()
+    if st.session_state.home_page == True:
+        show_dashboard()
+    elif st.session_state.learning_stared == True:
+        show_learning()
+        
 else:
     tab1, tab2 = st.tabs(["로그인", "회원가입"])
     with tab1:
