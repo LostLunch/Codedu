@@ -139,9 +139,9 @@ def show_learning():
 if st.session_state.logged_in:
     if st.session_state.home_page == True:
         show_dashboard()
-    elif st.session_state.learning_stared == True:
+    elif st.session_state.learning_started == True:
         show_learning()
-        
+
 else:
     tab1, tab2 = st.tabs(["로그인", "회원가입"])
     with tab1:
