@@ -404,6 +404,32 @@ def get_solved_problems(user_id: int, detail_level: Optional[int] = None, langua
     finally:
         conn.close()
 
+def is_problem_solved(user_id: int, problem_id: int, detail_level: int, language: Optional[str] = None) -> bool:
+    """특정 문제가 해결되었는지 확인합니다."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        if language:
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM solved_problems
+                WHERE user_id = ? AND problem_id = ? AND detail_level = ? AND language = ?
+            """, (user_id, problem_id, detail_level, language))
+        else:
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM solved_problems
+                WHERE user_id = ? AND problem_id = ? AND detail_level = ?
+            """, (user_id, problem_id, detail_level))
+        
+        result = cursor.fetchone()
+        return result['count'] > 0 if result else False
+    except sqlite3.Error:
+        return False
+    finally:
+        conn.close()
+
 # 데이터베이스 초기화 (모듈이 로드될 때 실행)
 init_database()
 

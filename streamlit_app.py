@@ -147,11 +147,24 @@ def show_learning():
         problem = get_problem(current_level, 10, False)
         for i in range(len(problem)):
             problem_id, problem_title, problem_url = problem[i]
+            
+            # 문제가 이미 해결되었는지 확인
+            is_solved = db.is_problem_solved(
+                user_id=st.session_state.user_info['id'],
+                problem_id=problem_id,
+                detail_level=current_level,
+                language=st.session_state.learning_language
+            )
+            
             col1, col2 = st.columns([4, 1])
             with col1:
-                st.write(f"{i+1}. [{problem_title}]({problem_url}) (ID: {problem_id})")
+                # 해결된 문제는 회색으로 표시
+                if is_solved:
+                    st.markdown(f"{i+1}. <span style='color:gray; text-decoration:line-through;'>[{problem_title}]({problem_url}) (ID: {problem_id}) ✅</span>", unsafe_allow_html=True)
+                else:
+                    st.write(f"{i+1}. [{problem_title}]({problem_url}) (ID: {problem_id})")
             with col2:
-                if st.button("문제 해결", key=f"solve_{problem_id}_{i}"):
+                if st.button("문제 해결", key=f"solve_{problem_id}_{i}", disabled=is_solved):
                     # 문제 해결 기록 저장
                     success = db.save_solved_problem(
                         user_id=st.session_state.user_info['id'],
