@@ -172,18 +172,18 @@ def show_learning():
 def get_problem(level : int, count : int, ifRandom : bool = False):
     result = []
     if ifRandom == True:
-        random_page = random.randrange(1,11)
+        random_page = random.randrange(1, 11)
         url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page={random_page}"
         res = requests.get(url).json()
-        selected = random.sample(problems, 10)
+        problems = res["items"]
+        selected = random.sample(problems, min(10, len(problems)))
 
-        return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}")for p in selected]
-
+        return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}") for p in selected]
 
     url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page=1"
     res = requests.get(url).json()
     problems = res["items"][:count]
-    return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}")for p in problems]
+    return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}") for p in problems]
 
 def write_problem(problem, current_level):
     for i in range(len(problem)):
