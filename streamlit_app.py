@@ -141,7 +141,12 @@ def show_learning():
     )
     st.write(f"현재 레벨에서 풀었던 문제 수: {solved_count}개")
 
-    detail_level = st.slider("난이도 선택", 1, 10, value=detail_level)
+    current_level = st.slider("난이도 선택", 1, 10, value=detail_level)
+
+    if current_level == detail_level:
+        problem = get_problem(current_level,10,False)
+        for i in range(len(problem)):
+            st.write(f"{i+1}. {problem[i]}")
     
 
 def get_problem(level : int, count : int, random : bool = False):
