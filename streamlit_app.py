@@ -130,15 +130,27 @@ def show_register():
 def show_learning():
     st.header("학습 시작하기")
     # detailLevel은 user_info에 없을 수 있으므로 안전하게 접근
+    
     detail_level = st.session_state.user_info.get("detailLevel", 1)
-    st.write("학습 수준 : " + str(detail_level))
-
     # 현재 레벨에서 풀었던 문제 수 조회
     solved_count = db.get_solved_problems_count(
         st.session_state.user_info['id'], 
         detail_level,
         st.session_state.learning_language
     )
+
+    if solved_count == 10:
+        detail_level += 1
+        
+    if detail_level == 10:
+        if st.session_state.user_info["level"] == "초급":
+            st.session_state.user_info["level"] = "중급"
+        if st.session_state.user_info["level"] == "중급":
+            st.session_state.user_info["level"] = "고고급"
+
+    st.write("학습 수준 : " + st.session_state.user_info["level"])
+    st.write("수준 레벨벨 : " + str(detail_level))
+
     st.write(f"현재 레벨에서 풀었던 문제 수: {solved_count}개")
 
     current_level = st.slider("난이도 선택", 1, 10, value=detail_level)
