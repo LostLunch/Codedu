@@ -145,7 +145,35 @@ def show_learning():
 
     if current_level == detail_level:
         problem = get_problem(current_level, 10, False)
-        for i in range(len(problem)):
+        write_problem(problem,current_level)
+    
+    elif current_level < detail_level:
+        problem = get_problem(current_level, 10, True)
+        write_problem(problem,current_level)
+    
+    else:
+        st.warning("아직 이 난이도가 개방되지 않았습니다")
+
+    
+
+def get_problem(level : int, count : int, random : bool = False):
+    result = []
+    if random == True:
+        random_page = random.randrange(1,11)
+        url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page={random_page}"
+        res = requests.get(url).json()
+        selected = random.sample(problems, 10)
+
+        return [(p["problemId"], p["titleKo"], p["url"]) for p in selected]
+
+
+    url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page=1"
+    res = requests.get(url).json()
+    problems = res["items"][:count]
+    return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}")for p in problems]
+
+def write_problem(problem, current_level):
+    for i in range(len(problem)):
             problem_id, problem_title, problem_url = problem[i]
             
             # 문제가 이미 해결되었는지 확인
@@ -179,24 +207,6 @@ def show_learning():
                         st.rerun()
                     else:
                         st.error("문제 해결 기록 저장에 실패했습니다.")
-
-    
-
-def get_problem(level : int, count : int, random : bool = False):
-    result = []
-    if random == True:
-        random_page = random.randrange(1,11)
-        url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page={random_page}"
-        res = requests.get(url).json()
-        selected = random.sample(problems, 10)
-
-        return [(p["problemId"], p["titleKo"], p["url"]) for p in selected]
-
-
-    url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page=1"
-    res = requests.get(url).json()
-    problems = res["items"][:count]
-    return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}")for p in problems]
 
 
 # --- 메인 라우팅 ---
