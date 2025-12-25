@@ -1,5 +1,7 @@
 import streamlit as st
+from sympy import false
 import database as db
+import requests
 
 st.title("CodEdu")
 
@@ -128,12 +130,23 @@ def show_register():
 
 def show_learning():
     st.header("학습 시작하기")
-    st.write("테스트")
-    st.write("테스트")
-    st.write("테스트")
-    st.write("테스트")
+    st.header("학습 수준 : " + level)
 
-    
+def get_problem(level : int, count : int, random : bool == false):
+    result = []
+    if random == True:
+        random_page = random.randrange(1,11)
+        url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page={random_page}"
+        res = requests.get(url).json()
+        selected = random.sample(problems, 10)
+
+        return [(p["problemId"], p["titleKo"], p["url"]) for p in selected]
+
+
+    url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page=1"
+    res = requests.get(url).json()
+    problems = res["items"][:count]
+    return [(p["problemId"], p["titleKo"],p["url"]) for p in problems]
 
 # --- 메인 라우팅 ---
 if st.session_state.logged_in:
