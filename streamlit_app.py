@@ -163,7 +163,8 @@ def get_problem(level : int, count : int, random : bool = False):
     url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page=1"
     res = requests.get(url).json()
     problems = res["items"][:count]
-    return [(p["problemId"], p["titleKo"],p["url"]) for p in problems]
+    return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}")for p in problems]
+
 
 # --- 메인 라우팅 ---
 if st.session_state.logged_in:
