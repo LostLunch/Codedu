@@ -157,11 +157,11 @@ def show_learning():
     current_level = st.slider("난이도 선택", 1, 10, value=detail_level)
 
     if current_level == detail_level:
-        problem = get_problem(current_level, 10, False)
+        problem = get_problem(current_level, 10, ifRandom = False)
         write_problem(problem,current_level)
     
     elif current_level < detail_level:
-        problem = get_problem(current_level, 10, True)
+        problem = get_problem(current_level, 10, ifRandom = True)
         write_problem(problem,current_level)
     
     else:
