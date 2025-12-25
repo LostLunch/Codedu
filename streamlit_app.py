@@ -144,9 +144,29 @@ def show_learning():
     current_level = st.slider("난이도 선택", 1, 10, value=detail_level)
 
     if current_level == detail_level:
-        problem = get_problem(current_level,10,False)
+        problem = get_problem(current_level, 10, False)
         for i in range(len(problem)):
-            st.write(f"{i+1}. {problem[i]}")
+            problem_id, problem_title, problem_url = problem[i]
+            col1, col2 = st.columns([4, 1])
+            with col1:
+                st.write(f"{i+1}. [{problem_title}]({problem_url}) (ID: {problem_id})")
+            with col2:
+                if st.button("문제 해결", key=f"solve_{problem_id}_{i}"):
+                    # 문제 해결 기록 저장
+                    success = db.save_solved_problem(
+                        user_id=st.session_state.user_info['id'],
+                        problem_id=problem_id,
+                        problem_title=problem_title,
+                        problem_url=problem_url,
+                        detail_level=current_level,
+                        language=st.session_state.learning_language
+                    )
+                    if success:
+                        st.success(f"'{problem_title}' 문제를 해결했습니다! ✅")
+                        st.rerun()
+                    else:
+                        st.error("문제 해결 기록 저장에 실패했습니다.")
+
     
 
 def get_problem(level : int, count : int, random : bool = False):
