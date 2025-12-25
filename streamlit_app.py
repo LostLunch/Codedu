@@ -177,7 +177,7 @@ def get_problem(level : int, count : int, ifRandom : bool = False):
         res = requests.get(url).json()
         selected = random.sample(problems, 10)
 
-        return [(p["problemId"], p["titleKo"], p["url"]) for p in selected]
+        return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}")for p in selected]
 
 
     url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page=1"
