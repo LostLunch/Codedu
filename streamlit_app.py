@@ -1,6 +1,7 @@
 import streamlit as st
 import database as db
 import requests
+import random
 
 st.title("CodEdu")
 
@@ -168,9 +169,9 @@ def show_learning():
 
     
 
-def get_problem(level : int, count : int, random : bool = False):
+def get_problem(level : int, count : int, ifRandom : bool = False):
     result = []
-    if random == True:
+    if ifRandom == True:
         random_page = random.randrange(1,11)
         url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page={random_page}"
         res = requests.get(url).json()
