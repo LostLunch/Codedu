@@ -141,7 +141,7 @@ def show_learning():
 
     if solved_count == 10:
         detail_level += 1
-        
+
     if detail_level == 10:
         if st.session_state.user_info["level"] == "초급":
             st.session_state.user_info["level"] = "중급"
@@ -149,7 +149,7 @@ def show_learning():
             st.session_state.user_info["level"] = "고고급"
 
     st.write("학습 수준 : " + st.session_state.user_info["level"])
-    st.write("수준 레벨벨 : " + str(detail_level))
+    st.write("수준 레벨 : " + str(detail_level))
 
     st.write(f"현재 레벨에서 풀었던 문제 수: {solved_count}개")
 
