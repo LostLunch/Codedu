@@ -1,5 +1,4 @@
 import streamlit as st
-from sympy import false
 import database as db
 import requests
 
@@ -130,9 +129,22 @@ def show_register():
 
 def show_learning():
     st.header("학습 시작하기")
-    st.header("학습 수준 : " + level)
+    # detailLevel은 user_info에 없을 수 있으므로 안전하게 접근
+    detail_level = st.session_state.user_info.get("detailLevel", 1)
+    st.write("학습 수준 : " + str(detail_level))
 
-def get_problem(level : int, count : int, random : bool == false):
+    # 현재 레벨에서 풀었던 문제 수 조회
+    solved_count = db.get_solved_problems_count(
+        st.session_state.user_info['id'], 
+        detail_level,
+        st.session_state.learning_language
+    )
+    st.write(f"현재 레벨에서 풀었던 문제 수: {solved_count}개")
+
+    detail_level = st.slider("난이도 선택", 1, detail_level, value=detail_level)
+    
+
+def get_problem(level : int, count : int, random : bool = False):
     result = []
     if random == True:
         random_page = random.randrange(1,11)

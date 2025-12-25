@@ -46,6 +46,7 @@ def init_database():
             chapter TEXT,
             completed BOOLEAN DEFAULT 0,
             score INTEGER DEFAULT 0,
+            detailLevel INTEGER DEFAULT 1,
             last_accessed TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
@@ -58,6 +59,22 @@ def init_database():
     except sqlite3.OperationalError:
         # 컬럼이 이미 존재하는 경우 무시
         pass
+    
+    # 문제 풀이 기록 테이블 생성
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS solved_problems (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            problem_id INTEGER NOT NULL,
+            problem_title TEXT,
+            problem_url TEXT,
+            detail_level INTEGER NOT NULL,
+            language TEXT DEFAULT 'Python',
+            solved_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            UNIQUE(user_id, problem_id, detail_level)
+        )
+    """)
     
     conn.commit()
     conn.close()
@@ -311,6 +328,79 @@ def get_user_stats(user_id: int, language: Optional[str] = None) -> Dict[str, An
             'total_chapters': 0,
             'average_score': 0
         }
+    finally:
+        conn.close()
+
+def save_solved_problem(user_id: int, problem_id: int, problem_title: str, problem_url: str, detail_level: int, language: str = 'Python') -> bool:
+    """문제 풀이 기록을 저장합니다. (중복 방지)"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # 중복 체크 후 저장 (같은 문제를 같은 레벨에서 다시 풀면 업데이트)
+        cursor.execute("""
+            INSERT OR REPLACE INTO solved_problems 
+            (user_id, problem_id, problem_title, problem_url, detail_level, language, solved_at)
+            VALUES (?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        """, (user_id, problem_id, problem_title, problem_url, detail_level, language))
+        
+        conn.commit()
+        return True
+    except sqlite3.Error:
+        return False
+    finally:
+        conn.close()
+
+def get_solved_problems_count(user_id: int, detail_level: int, language: Optional[str] = None) -> int:
+    """특정 레벨에서 풀었던 문제 수를 반환합니다."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        if language:
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM solved_problems
+                WHERE user_id = ? AND detail_level = ? AND language = ?
+            """, (user_id, detail_level, language))
+        else:
+            cursor.execute("""
+                SELECT COUNT(*) as count
+                FROM solved_problems
+                WHERE user_id = ? AND detail_level = ?
+            """, (user_id, detail_level))
+        
+        result = cursor.fetchone()
+        return result['count'] if result else 0
+    except sqlite3.Error:
+        return 0
+    finally:
+        conn.close()
+
+def get_solved_problems(user_id: int, detail_level: Optional[int] = None, language: Optional[str] = None) -> list[Dict[str, Any]]:
+    """풀었던 문제 목록을 조회합니다."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        query = "SELECT problem_id, problem_title, problem_url, detail_level, language, solved_at FROM solved_problems WHERE user_id = ?"
+        params = [user_id]
+        
+        if detail_level is not None:
+            query += " AND detail_level = ?"
+            params.append(detail_level)
+        
+        if language:
+            query += " AND language = ?"
+            params.append(language)
+        
+        query += " ORDER BY solved_at DESC"
+        
+        cursor.execute(query, tuple(params))
+        rows = cursor.fetchall()
+        return [dict(row) for row in rows]
+    except sqlite3.Error:
+        return []
     finally:
         conn.close()
 
