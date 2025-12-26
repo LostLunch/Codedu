@@ -266,6 +266,60 @@ def get_learning_progress(user_id: int, language: Optional[str] = None) -> list[
     finally:
         conn.close()
 
+def get_user_detail_level(user_id: int, language: str = 'Python') -> int:
+    """사용자의 detailLevel을 조회합니다."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        cursor.execute("""
+            SELECT detailLevel FROM learning_progress
+            WHERE user_id = ? AND language = ?
+            LIMIT 1
+        """, (user_id, language))
+        result = cursor.fetchone()
+        return result['detailLevel'] if result and result['detailLevel'] else 1
+    except sqlite3.Error:
+        return 1
+    finally:
+        conn.close()
+
+def update_user_detail_level(user_id: int, detail_level: int, language: str = 'Python') -> bool:
+    """사용자의 detailLevel을 업데이트합니다."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # 기존 레코드 확인
+        cursor.execute("""
+            SELECT id FROM learning_progress
+            WHERE user_id = ? AND language = ?
+            LIMIT 1
+        """, (user_id, language))
+        
+        existing = cursor.fetchone()
+        
+        if existing:
+            # 업데이트
+            cursor.execute("""
+                UPDATE learning_progress
+                SET detailLevel = ?, last_accessed = CURRENT_TIMESTAMP
+                WHERE id = ?
+            """, (detail_level, existing['id']))
+        else:
+            # 새로 추가
+            cursor.execute("""
+                INSERT INTO learning_progress (user_id, language, detailLevel)
+                VALUES (?, ?, ?)
+            """, (user_id, language, detail_level))
+        
+        conn.commit()
+        return True
+    except sqlite3.Error:
+        return False
+    finally:
+        conn.close()
+
 def get_user_stats(user_id: int, language: Optional[str] = None) -> Dict[str, Any]:
     """사용자의 통계 정보를 반환합니다. (언어별 필터링 가능)"""
     conn = get_db_connection()
@@ -369,6 +423,45 @@ def get_solved_problems_count(user_id: int, detail_level: int, language: Optiona
                 FROM solved_problems
                 WHERE user_id = ? AND detail_level = ?
             """, (user_id, detail_level))
+        
+        result = cursor.fetchone()
+        return result['count'] if result else 0
+    except sqlite3.Error:
+        return 0
+    finally:
+        conn.close()
+
+def get_level_problems_count(user_id: int, level: str, language: Optional[str] = None) -> int:
+    """특정 레벨(초급/중급/고급)에서 풀었던 문제 수를 반환합니다."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    
+    try:
+        # 레벨에 따라 detail_level 범위 결정
+        if level == "초급":
+            detail_level_range = (1, 10)
+        elif level == "중급":
+            detail_level_range = (11, 20)
+        elif level == "고급":
+            detail_level_range = (21, 30)
+        else:
+            detail_level_range = (1, 10)  # 기본값
+        
+        if language:
+            cursor.execute("""
+                SELECT COUNT(DISTINCT problem_id) as count
+                FROM solved_problems
+                WHERE user_id = ? 
+                AND detail_level >= ? AND detail_level <= ?
+                AND language = ?
+            """, (user_id, detail_level_range[0], detail_level_range[1], language))
+        else:
+            cursor.execute("""
+                SELECT COUNT(DISTINCT problem_id) as count
+                FROM solved_problems
+                WHERE user_id = ? 
+                AND detail_level >= ? AND detail_level <= ?
+            """, (user_id, detail_level_range[0], detail_level_range[1]))
         
         result = cursor.fetchone()
         return result['count'] if result else 0

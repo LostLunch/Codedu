@@ -4,6 +4,11 @@ import requests
 import random
 
 st.title("CodEdu")
+if st.button("홈으로 돌아가기"):
+    st.session_state.home_page = True
+    st.session_state.learning_started = False
+    st.rerun()
+
 
 # 세션 상태 초기화
 if 'logged_in' not in st.session_state:
@@ -109,6 +114,9 @@ def show_login():
             if success:
                 st.session_state.logged_in = True
                 st.session_state.user_info = user_info
+                # detailLevel을 데이터베이스에서 가져와서 user_info에 추가
+                detail_level = db.get_user_detail_level(user_info['id'], user_info.get('learning_language', 'Python'))
+                st.session_state.user_info['detailLevel'] = detail_level
                 st.success("로그인 성공!")
                 st.rerun()
             else:
@@ -152,19 +160,42 @@ def show_learning():
 
     if solved_count == 10:
         detail_level += 1
+        # user_info 딕셔너리 업데이트 (딕셔너리는 ['key'] 형식으로 접근)
+        st.session_state.user_info['detailLevel'] = detail_level
+        # 데이터베이스에도 저장
+        db.update_user_detail_level(
+            st.session_state.user_info['id'],
+            detail_level,
+            st.session_state.learning_language
+        )
+        solved_count = 0
         
 
-    if detail_level == 10:
-        if st.session_state.user_info["level"] == "초급":
+    # 현재 레벨(초급/중급/고급)에서 풀었던 문제 수 조회 (레벨별)
+    current_user_level = st.session_state.user_info.get("level", "초급")
+    level_solved_count = db.get_level_problems_count(
+        st.session_state.user_info['id'],
+        current_user_level,
+        st.session_state.learning_language
+    )
+
+    # 레벨별로 10개 문제를 풀면 다음 레벨로 전환 (detail_level은 초기화하지 않음)
+    if level_solved_count >= 10:
+        if current_user_level == "초급":
             st.session_state.user_info["level"] = "중급"
-        if st.session_state.user_info["level"] == "중급":
+            db.update_user_level(st.session_state.user_info['id'], "중급")
+            st.success("축하합니다! 중급 레벨로 승급했습니다! 🎉")
+            st.rerun()
+        elif current_user_level == "중급":
             st.session_state.user_info["level"] = "고급"
+            db.update_user_level(st.session_state.user_info['id'], "고급")
+            st.success("축하합니다! 고급 레벨로 승급했습니다! 🎉")
+            st.rerun()
 
-    print(solved_count,detail_level)
     st.write("학습 수준 : " + st.session_state.user_info["level"])
-    st.write("수준 레벨 : " + str(detail_level))
-
-    st.write(f"현재 레벨에서 풀었던 문제 수: {solved_count}개")
+    st.write("문제 난이도 레벨 : " + str(detail_level))
+    st.write(f"현재 난이도에서 풀었던 문제 수: {solved_count}개 / 10개")
+    st.write(f"현재 레벨({current_user_level})에서 풀었던 문제 수: {level_solved_count}개 / 10개")
 
     current_level = st.slider("난이도 선택", 1, 10, value=detail_level)
     if current_level == detail_level:
@@ -267,7 +298,6 @@ def write_problem(problem, current_level):
                         language=st.session_state.learning_language
                     )
                     if success:
-                        st.success(f"'{problem_title}' 문제를 해결했습니다! ✅")
                         st.rerun()
                     else:
                         st.error("문제 해결 기록 저장에 실패했습니다.")
