@@ -165,7 +165,6 @@ def show_learning():
     st.write(f"현재 레벨에서 풀었던 문제 수: {solved_count}개")
 
     current_level = st.slider("난이도 선택", 1, 10, value=detail_level)
-    print(current_level)
     if current_level == detail_level:
         problem = get_problem(current_level, 10, ifRandom = False)
         write_problem(problem,current_level)
@@ -179,21 +178,61 @@ def show_learning():
 
     
 
+def level_to_tier(level: int) -> str:
+    """레벨을 tier로 변환 (레벨 1-30)
+    레벨 1 = 티어 1 (Bronze V) = bronze5
+    레벨 2 = 티어 2 (Bronze IV) = bronze4
+    ...
+    레벨 5 = 티어 5 (Bronze I) = bronze1
+    레벨 6 = 티어 6 (Silver V) = silver5
+    ...
+    """
+    if 1 <= level <= 30:
+        return tier_list[level - 1]  # 레벨 1 -> 인덱스 0 (bronze5), 레벨 5 -> 인덱스 4 (bronze1)
+    else:
+        return "bronze5"  # 기본값
+
 def get_problem(level : int, count : int, ifRandom : bool = False):
-    tier = tier_list[level-1]
+    # 레벨을 tier로 변환
+    tier = level_to_tier(level)
+    
     if ifRandom == True:
         random_page = random.randrange(1, 11)
-        url = f"https://solved.ac/api/v3/search/problem?query=tier:{tier}&page={random_page}"
+        url = f"https://solved.ac/api/v3/search/problem?query=tier:{tier}&page={random_page}&sort=solved&direction=desc"
         res = requests.get(url).json()
-        problems = res["items"]
+        # 정확한 레벨로 필터링 (tier는 범위이므로)
+        problems = [p for p in res["items"] if p["level"] == level]
+        
+        # 필터링된 문제가 부족하면 추가 페이지에서 가져오기
+        page = random_page
+        while len(problems) < 10 and page <= 20:
+            page += 1
+            url = f"https://solved.ac/api/v3/search/problem?query=tier:{tier}&page={page}&sort=solved&direction=desc"
+            res = requests.get(url).json()
+            problems.extend([p for p in res["items"] if p["level"] == level])
+            if len(res["items"]) == 0:
+                break
+        
+        if len(problems) == 0:
+            return []
+        
         selected = random.sample(problems, min(10, len(problems)))
-
         return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}") for p in selected]
 
-    url = f"https://solved.ac/api/v3/search/problem?query=tier:{tier}&sort=solved"
-    res = requests.get(url).json()
-    problems = res["items"][:count]
-    return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}") for p in problems]
+    # tier로 검색한 후 정확한 레벨로 필터링
+    problems = []
+    page = 1
+    while len(problems) < count and page <= 20:
+        url = f"https://solved.ac/api/v3/search/problem?query=tier:{tier}&page={page}&sort=solved&direction=desc"
+        res = requests.get(url).json()
+        # 해당 레벨의 문제만 필터링
+        filtered = [p for p in res["items"] if p["level"] == level]
+        problems.extend(filtered)
+        if len(res["items"]) == 0:
+            break
+        page += 1
+    
+    return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}") for p in problems[:count]]
 
 def write_problem(problem, current_level):
     for i in range(len(problem)):
