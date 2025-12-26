@@ -147,7 +147,7 @@ def show_learning():
         if st.session_state.user_info["level"] == "초급":
             st.session_state.user_info["level"] = "중급"
         if st.session_state.user_info["level"] == "중급":
-            st.session_state.user_info["level"] = "고고급"
+            st.session_state.user_info["level"] = "고급"
 
     st.write("학습 수준 : " + st.session_state.user_info["level"])
     st.write("수준 레벨 : " + str(detail_level))
@@ -155,7 +155,7 @@ def show_learning():
     st.write(f"현재 레벨에서 풀었던 문제 수: {solved_count}개")
 
     current_level = st.slider("난이도 선택", 1, 10, value=detail_level)
-
+    print(current_level)
     if current_level == detail_level:
         problem = get_problem(current_level, 10, ifRandom = False)
         write_problem(problem,current_level)
@@ -180,7 +180,7 @@ def get_problem(level : int, count : int, ifRandom : bool = False):
 
         return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}") for p in selected]
 
-    url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page=1"
+    url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&sort=solved"
     res = requests.get(url).json()
     problems = res["items"][:count]
     return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}") for p in problems]
