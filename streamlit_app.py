@@ -17,6 +17,16 @@ if 'learning_started' not in st.session_state:
 if 'learning_language' not in st.session_state:
     st.session_state.learning_language = 'Python'
 
+tier_list = [
+    "bronze5", "bronze4", "bronze3", "bronze2", "bronze1",
+    "silver5", "silver4", "silver3", "silver2", "silver1",
+    "gold5", "gold4", "gold3", "gold2", "gold1",
+    "platinum5", "platinum4", "platinum3", "platinum2", "platinum1",
+    "diamond5", "diamond4", "diamond3", "diamond2", "diamond1",
+    "ruby5", "ruby4", "ruby3", "ruby2", "ruby1"
+]
+
+
 
 # --- 화면 함수 정의 ---
 def show_dashboard():
@@ -170,17 +180,17 @@ def show_learning():
     
 
 def get_problem(level : int, count : int, ifRandom : bool = False):
-    result = []
+    tier = tier_list[level-1]
     if ifRandom == True:
         random_page = random.randrange(1, 11)
-        url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&page={random_page}"
+        url = f"https://solved.ac/api/v3/search/problem?query=tier:{tier}&page={random_page}"
         res = requests.get(url).json()
         problems = res["items"]
         selected = random.sample(problems, min(10, len(problems)))
 
         return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}") for p in selected]
 
-    url = f"https://solved.ac/api/v3/search/problem?query=level:{level}&sort=solved"
+    url = f"https://solved.ac/api/v3/search/problem?query=tier:{tier}&sort=solved"
     res = requests.get(url).json()
     problems = res["items"][:count]
     return [(p["problemId"], p["titleKo"], f"https://www.acmicpc.net/problem/{p['problemId']}") for p in problems]
